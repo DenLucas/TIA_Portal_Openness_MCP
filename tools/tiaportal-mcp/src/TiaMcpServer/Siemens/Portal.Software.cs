@@ -1465,7 +1465,7 @@ namespace TiaMcpServer.Siemens
             }
 
             var sw = softwareContainer.Software;
-            var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = TryFindScreenByName(sw, screenName);
             if (screen == null)
             {
                 // 「找不到」返回一条正常响应 + 空成员表，调用方看到的是 isError=false，
@@ -1648,7 +1648,7 @@ namespace TiaMcpServer.Siemens
             }
 
             var sw = sc.Software;
-            var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = TryFindScreenByName(sw, screenName);
             if (screen == null)
             {
                 // 「找不到」返回一条正常响应 + 空成员表，调用方看到的是 isError=false，
@@ -1778,7 +1778,7 @@ namespace TiaMcpServer.Siemens
                 Step("resolveSoftware", true, sw.GetType().FullName);
 
                 // Resolve screen + tag table
-                var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+                var screen = TryFindScreenByName(sw, screenName);
                 if (screen == null)
                 {
                     Step("findScreen", false, $"Screen '{screenName}' not found");
@@ -2321,7 +2321,7 @@ namespace TiaMcpServer.Siemens
                 var screens = TryGetPropertyValue(sw, "Screens");
                 if (screens == null) throw new InvalidOperationException("HMI Screens collection not found.");
 
-                var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+                var screen = TryFindScreenByName(sw, screenName);
                 var action = "exists";
                 if (screen == null)
                 {
@@ -3410,7 +3410,7 @@ namespace TiaMcpServer.Siemens
         private object ResolveHmiScreenOrThrow(string hmiSoftwarePath, string screenName)
         {
             var sw = ResolveHmiSoftwareOrThrow(hmiSoftwarePath);
-            var screen = TryFindByNameInCollection(sw, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = TryFindScreenByName(sw, screenName);
             if (screen == null)
             {
                 throw new InvalidOperationException($"HMI screen '{screenName}' not found.");
@@ -4726,7 +4726,7 @@ namespace TiaMcpServer.Siemens
             var softwareContainer = GetSoftwareContainer(softwarePath);
             if (softwareContainer?.Software == null) throw new PortalException(PortalErrorCode.NotFound, $"HMI software not found: {softwarePath}");
 
-            var screen = TryFindByNameInCollection(softwareContainer.Software, new[] { "Screens", "ScreenFolder" }, screenName);
+            var screen = TryFindScreenByName(softwareContainer.Software, screenName);
             if (screen == null) throw new PortalException(PortalErrorCode.NotFound, $"HMI screen not found: {screenName}");
 
             if (!TryExportEngineeringObject(screen, exportPath, out var err))
@@ -5918,30 +5918,8 @@ namespace TiaMcpServer.Siemens
 
             try
             {
-                // Try common shapes: root.Screens OR root.ScreenFolder.Screens
-                var rootType = hmiRoot.GetType();
-                var screens = rootType.GetProperty("Screens")?.GetValue(hmiRoot);
-                if (screens == null)
-                {
-                    var folder = rootType.GetProperty("ScreenFolder")?.GetValue(hmiRoot);
-                    if (folder != null)
-                    {
-                        screens = folder.GetType().GetProperty("Screens")?.GetValue(folder);
-                    }
-                }
-
-                if (screens is System.Collections.IEnumerable enumerable)
-                {
-                    foreach (var item in enumerable)
-                    {
-                        if (item == null) continue;
-                        var name = item.GetType().GetProperty("Name")?.GetValue(item)?.ToString();
-                        if (!string.IsNullOrWhiteSpace(name))
-                        {
-                            result.Add(name!);
-                        }
-                    }
-                }
+                var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+                EnumerateHmiScreensRecursive(hmiRoot, result, visited);
             }
             catch
             {
@@ -5949,6 +5927,98 @@ namespace TiaMcpServer.Siemens
             }
 
             return result;
+        }
+
+        // Walks root.Screens plus every nested folder (Unified: ScreenGroups, Classic: ScreenFolder/Folders/Groups)
+        // so screens organized in a screen group / folder are not silently invisible.
+        private static void EnumerateHmiScreensRecursive(object? container, List<string> result, HashSet<object> visited)
+        {
+            if (container == null) return;
+            if (!visited.Add(container)) return;
+
+            var screens = TryGetPropertyValue(container, "Screens");
+            if (screens is System.Collections.IEnumerable screenEnumerable && screens is not string)
+            {
+                foreach (var item in screenEnumerable)
+                {
+                    if (item == null) continue;
+                    var name = item.GetType().GetProperty("Name")?.GetValue(item)?.ToString();
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        result.Add(name!);
+                    }
+                }
+            }
+
+            // Classic HmiTarget: root.ScreenFolder.Screens (single nested folder, not a collection)
+            var singleFolder = TryGetPropertyValue(container, "ScreenFolder");
+            if (singleFolder != null && !ReferenceEquals(singleFolder, container))
+            {
+                EnumerateHmiScreensRecursive(singleFolder, result, visited);
+            }
+
+            // Child-folder collections: Unified uses ScreenGroups, Classic subfolders use Folders/Groups
+            foreach (var groupPropName in new[] { "ScreenGroups", "Folders", "Groups" })
+            {
+                var groups = TryGetPropertyValue(container, groupPropName);
+                if (groups is System.Collections.IEnumerable groupEnumerable && groups is not string)
+                {
+                    foreach (var group in groupEnumerable)
+                    {
+                        if (group == null) continue;
+                        EnumerateHmiScreensRecursive(group, result, visited);
+                    }
+                }
+            }
+        }
+
+        // Same traversal as EnumerateHmiScreensRecursive, but stops at the first screen matching wantedName.
+        private static object? TryFindScreenByNameRecursive(object? container, string wantedName, HashSet<object> visited)
+        {
+            if (container == null) return null;
+            if (!visited.Add(container)) return null;
+
+            var screens = TryGetPropertyValue(container, "Screens");
+            if (screens is System.Collections.IEnumerable screenEnumerable && screens is not string)
+            {
+                foreach (var item in screenEnumerable)
+                {
+                    if (item == null) continue;
+                    var name = item.GetType().GetProperty("Name")?.GetValue(item)?.ToString();
+                    if (string.Equals(name, wantedName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return item;
+                    }
+                }
+            }
+
+            var singleFolder = TryGetPropertyValue(container, "ScreenFolder");
+            if (singleFolder != null && !ReferenceEquals(singleFolder, container))
+            {
+                var foundInFolder = TryFindScreenByNameRecursive(singleFolder, wantedName, visited);
+                if (foundInFolder != null) return foundInFolder;
+            }
+
+            foreach (var groupPropName in new[] { "ScreenGroups", "Folders", "Groups" })
+            {
+                var groups = TryGetPropertyValue(container, groupPropName);
+                if (groups is System.Collections.IEnumerable groupEnumerable && groups is not string)
+                {
+                    foreach (var group in groupEnumerable)
+                    {
+                        if (group == null) continue;
+                        var found = TryFindScreenByNameRecursive(group, wantedName, visited);
+                        if (found != null) return found;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static object? TryFindScreenByName(object hmiRoot, string wantedName)
+        {
+            return TryFindScreenByNameRecursive(hmiRoot, wantedName, new HashSet<object>(ReferenceEqualityComparer.Instance));
         }
 
         private static List<string> TryListNamesFromCollection(object root, string[] propertyHints, string finalCollectionNameHint)
