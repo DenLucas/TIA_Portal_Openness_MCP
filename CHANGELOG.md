@@ -27,6 +27,43 @@
   这条以取证为目的的 CLI 就是这么做的）。只想检查脚本写得对不对，用离线的
   `BuildUnifiedHmiButtonActionScript`，它不连博途，崩不了任何东西。
 
+- **Screens inside a Unified HMI screen group (folder) were invisible to every
+  screen tool.** `GetHmiScreens`, `GetHmiProgramInfo`, `DescribeHmiScreen`,
+  `ExportHmiScreen`, `ExportHmiProgram`, `EnsureUnifiedHmiScreen` and the
+  button-action bind tool all resolved screens by reading only the HMI
+  software's root `Screens` composition. A screen filed under a `ScreenGroups`
+  folder (the normal way real WinCC Unified projects organize screens, e.g.
+  `00_ScreenLayout/PopUps/LogOff`) was not found by name, not listed, and not
+  exported — with no indication that a folder was the reason, only a plain
+  "not found". Moving a screen to the HMI software's root made it visible
+  again, which was the only symptom that pointed at the real cause.
+
+  `TryListScreens` and every screen-by-name lookup now walk a shared
+  recursive helper (`EnumerateHmiScreensRecursive` /
+  `TryFindScreenByNameRecursive`, mirroring the existing
+  `EnumeratePlcWatchTablesRecursive` pattern used for nested PLC watch/force
+  table groups) that also descends into `ScreenGroups` — and, for Classic
+  HMI, `ScreenFolder`/`Folders`/`Groups` — with cycle protection. Verified
+  against a real TIA Portal V21 project with `LogOff`/`ModeRequests`/
+  `PowerStatus` two levels deep in a screen group: all three now resolve by
+  name and appear in `GetHmiScreens`. Not separately verified against a
+  Classic (Comfort/Basic) HMI project with nested screen folders — that path
+  follows the same existing `ScreenFolder` property names already used
+  elsewhere in this file, but I only had a Unified project to test against.
+
+  Maintainer follow-up on the same PR: two more lookups had the same shallow
+  read — the reflection bridge's `objectKind=HmiScreen` / `HmiScreenItem`
+  (`DescribeObject`, `GetObjectProperty`, `InvokeObject`, …) — and now go
+  through the same walk. The walk moved into the zero-dependency
+  `HmiScreenWalk.cs` so the offline suite can feed it fake object graphs
+  (Unified two-level groups, Classic nested folders, a self-referencing group,
+  a collection that throws mid-enumeration); a lookup that fails still reads as
+  "not found" instead of throwing, as before. The property names were checked
+  against the V21 Openness assemblies: `HmiSoftware.ScreenGroups` →
+  `HmiScreenGroup.Groups`/`Screens`, and `HmiTarget.ScreenFolder` →
+  `Folders`/`Screens`. Classic popup / slide-in / template folders are still
+  not walked, same as before this change.
+
 ## [2.7.2] - 2026-09-05 - 寻不到址的模块、用不了的服务器、不说话的空结果
 
 三条都来自 issue #33 的现场反馈，都是「工具在，但用不上」。

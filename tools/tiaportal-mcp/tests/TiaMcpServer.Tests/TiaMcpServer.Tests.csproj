@@ -38,5 +38,7 @@
          它埋在依赖 Siemens.Engineering 的大文件里时，没装博途的机器一行都测不到，
          而崩溃路径本来就少见 —— 判错了也悄无声息，属于只有会失败的用例盯得住的那类。 -->
     <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\PortalFailureClassifier.cs" Link="PortalFailureClassifier.cs" />
+    <!-- 画面分组递归（PR #41）：分组里的画面曾对所有画面工具隐形，只报一句「找不到」。 -->
+    <Compile Include="..\..\src\TiaMcpServer\ModelContextProtocol\HmiScreenWalk.cs" Link="HmiScreenWalk.cs" />
   </ItemGroup>
 </Project>
