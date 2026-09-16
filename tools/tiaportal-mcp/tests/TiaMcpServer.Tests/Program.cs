@@ -57,6 +57,9 @@ namespace TiaMcpServer.Tests
             Console.WriteLine("== Unified JS 脚本的 SyntaxCheck 默认关闭 + 进程级致命错不许被吞（issue #36）==");
             UnifiedScriptSyntaxCheckTests.Run(Check, Skip);
 
+            Console.WriteLine("== 画面分组里的画面不许隐形（PR #41）==");
+            HmiScreenWalkTests.Run(Check);
+
             Console.WriteLine(_fail == 0
                 ? $"{_pass} passed, {_fail} failed, {_skip} skipped."
                 : $"{_pass} passed, {_fail} failed, {_skip} skipped.  <<< 有失败");

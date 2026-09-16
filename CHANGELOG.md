@@ -51,6 +51,19 @@
   follows the same existing `ScreenFolder` property names already used
   elsewhere in this file, but I only had a Unified project to test against.
 
+  Maintainer follow-up on the same PR: two more lookups had the same shallow
+  read — the reflection bridge's `objectKind=HmiScreen` / `HmiScreenItem`
+  (`DescribeObject`, `GetObjectProperty`, `InvokeObject`, …) — and now go
+  through the same walk. The walk moved into the zero-dependency
+  `HmiScreenWalk.cs` so the offline suite can feed it fake object graphs
+  (Unified two-level groups, Classic nested folders, a self-referencing group,
+  a collection that throws mid-enumeration); a lookup that fails still reads as
+  "not found" instead of throwing, as before. The property names were checked
+  against the V21 Openness assemblies: `HmiSoftware.ScreenGroups` →
+  `HmiScreenGroup.Groups`/`Screens`, and `HmiTarget.ScreenFolder` →
+  `Folders`/`Screens`. Classic popup / slide-in / template folders are still
+  not walked, same as before this change.
+
 ## [2.7.2] - 2026-09-05 - 寻不到址的模块、用不了的服务器、不说话的空结果
 
 三条都来自 issue #33 的现场反馈，都是「工具在，但用不上」。
