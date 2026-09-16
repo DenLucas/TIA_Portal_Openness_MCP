@@ -1,6 +1,6 @@
 ﻿# Change Log
 
-## [Unreleased] - 写 Unified JS 脚本不再赌上整个博途进程
+## [2.7.3] - 2026-09-16 - 写 Unified JS 脚本不再赌上整个博途进程；画面分组里的画面不再隐形
 
 ### 修复
 
@@ -28,7 +28,7 @@
   `BuildUnifiedHmiButtonActionScript`，它不连博途，崩不了任何东西。
 
 - **Screens inside a Unified HMI screen group (folder) were invisible to every
-  screen tool.** `GetHmiScreens`, `GetHmiProgramInfo`, `DescribeHmiScreen`,
+  screen tool.** (PR #41, contributed by @DenLucas) `GetHmiScreens`, `GetHmiProgramInfo`, `DescribeHmiScreen`,
   `ExportHmiScreen`, `ExportHmiProgram`, `EnsureUnifiedHmiScreen` and the
   button-action bind tool all resolved screens by reading only the HMI
   software's root `Screens` composition. A screen filed under a `ScreenGroups`

@@ -1,6 +1,6 @@
 {
   "package": "TIA_MCP_Delivery_v2.4.0",
-  "generatedAt": "2026-09-05T10:47:50.276958+08:00",
+  "generatedAt": "2026-09-16T17:25:02.533852+08:00",
   "source": "live MCP tools/list of TiaMcpServer.exe",
   "toolCount": 222,
   "note": "Full roster (--profile full). The default lite profile lists ~49 of these; the rest stay reachable via FindTools + CallTool. Runtime tools/list remains authoritative.",
@@ -900,9 +900,10 @@
         "buttonName",
         "eventType",
         "actionKind",
-        "targetTag"
+        "targetTag",
+        "syntaxCheck"
       ],
-      "description": "[L2][HMI-Unified]Generate and apply a deterministic Unified HMI button action. Only set-bit/reset-bit/toggle-bit are applied; high-risk or TODO recipes are rejected."
+      "description": "[L2][HMI-Unified]Generate and apply a deterministic Unified HMI button action. Only set-bit/reset-bit/toggle-bit are applied; high-risk or TODO recipes are rejected. SyntaxCheck is OFF by default (issue #36: it can crash TIA V21)."
     },
     {
       "name": "EnsureUnifiedHmiButtonEventHandler",
@@ -2694,9 +2695,10 @@
         "eventType",
         "scriptCode",
         "globalDefinitionAreaScriptCode",
-        "async"
+        "async",
+        "syntaxCheck"
       ],
-      "description": "[L2][HMI-Unified]Set ScriptCode on a Unified HMI button event ScriptDynamization and run SyntaxCheck."
+      "description": "[L2][HMI-Unified]Set ScriptCode on a Unified HMI button event ScriptDynamization. SyntaxCheck is OFF by default because on TIA V21 it can crash the Portal process and lose the script (issue #36); pass syntaxCheck=true only when you need that evidence."
     },
     {
       "name": "SetWatchTableModifyValue",

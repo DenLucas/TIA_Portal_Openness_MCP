@@ -2,7 +2,7 @@
 
 本文件由源码中的 `[McpServerTool]` 静态抽取生成，运行时仍以 `tools/list` 为准。
 
-- 生成时间：2026-09-05 11:47:50
+- 生成时间：2026-09-16 18:25:03
 - 工具数量：222
 
 ## L0
@@ -244,9 +244,9 @@
 | ListUnifiedHmiApiTypes | [L2][HMI-Unified]List loaded WinCC Unified HMI API types/enums by name filter, useful for discovering event and dynamization types. |
 | EnsureUnifiedHmiButtonEventHandler | [L2][HMI-Unified]Ensure a Unified HMI button event handler exists and return its API shape. eventType must match HmiButtonEventType. |
 | DescribeUnifiedHmiButtonEventScript | [L2][HMI-Unified]Describe a Unified HMI button event handler Script property and its current object members/attributes. |
-| SetUnifiedHmiButtonEventScriptCode | [L2][HMI-Unified]Set ScriptCode on a Unified HMI button event ScriptDynamization and run SyntaxCheck. |
+| SetUnifiedHmiButtonEventScriptCode | [L2][HMI-Unified]Set ScriptCode on a Unified HMI button event ScriptDynamization. SyntaxCheck is OFF by default because on TIA V21 it can crash the Portal process and lose the script (issue #36); pass syntaxCheck=true only when you need that evidence. |
 | BuildUnifiedHmiButtonActionScript | [L2][HMI-Unified]Build a safe Unified HMI button action script from a high-level action recipe without connecting to TIA. |
-| EnsureUnifiedHmiButtonAction | [L2][HMI-Unified]Generate and apply a deterministic Unified HMI button action. Only set-bit/reset-bit/toggle-bit are applied; high-risk or TODO recipes are rejected. |
+| EnsureUnifiedHmiButtonAction | [L2][HMI-Unified]Generate and apply a deterministic Unified HMI button action. Only set-bit/reset-bit/toggle-bit are applied; high-risk or TODO recipes are rejected. SyntaxCheck is OFF by default (issue #36: it can crash TIA V21). |
 | EnsureUnifiedHmiDynamization | [L2][HMI-Unified]Ensure a Unified HMI item property dynamization exists using a concrete dynamization type and return its API shape. |
 | BindUnifiedHmiTagDynamization | [L2][HMI-Unified]Ensure a Unified HMI TagDynamization exists for an item property and bind it to an HMI tag. |
 
