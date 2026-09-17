@@ -277,55 +277,13 @@ namespace TiaMcpServer.ModelContextProtocol
             return string.IsNullOrEmpty(s) ? "" : $"({s})";
         }
 
-        private static (string text, bool literal) ReadAccess(XElement acc)
-        {
-            var scope = acc.Attribute("Scope")?.Value ?? "";
-            if (scope.Contains("Constant"))
-            {
-                var v = acc.Descendants("ConstantValue").FirstOrDefault()?.Value?.Trim() ?? "?";
-                return (v, true);
-            }
-            // symbol: join Component names with '.'
-            var comps = acc.Descendants("Component").Select(c => c.Attribute("Name")?.Value).Where(v => !string.IsNullOrEmpty(v)).ToList();
-            var name = string.Join(".", comps);
-            if (string.IsNullOrEmpty(name)) name = "?";
-            return (scope.Contains("Global") ? $"\"{name}\"" : $"#{name}", false);
-        }
+        // 操作数与 SCL 正文的读法只有一份实现（SimaticMlText）。原来这里用 Descendants 拼所有后代分量：
+        // 数组下标吞掉符号名、调用与形参整体丢失、引号包住整条路径（issue #42）。
+        private static (string text, bool literal) ReadAccess(XElement acc) => SimaticMlText.ReadAccess(acc);
 
         // ---- StructuredText (SCL/STL) ----
 
-        private static string RenderStructuredText(XElement unit)
-        {
-            var st = unit.Descendants("StructuredText").FirstOrDefault();
-            if (st == null) return "";
-            var sb = new StringBuilder();
-            foreach (var node in st.Elements())
-            {
-                switch (node.Name.LocalName)
-                {
-                    case "Text": sb.Append(node.Value); break;
-                    case "Token": sb.Append(node.Attribute("Text")?.Value ?? ""); break;
-                    case "Blank": sb.Append(new string(' ', ParseNum(node, 1))); break;
-                    case "NewLine": sb.Append('\n'); break;
-                    case "Access":
-                        var comps = node.Descendants("Component").Select(c => c.Attribute("Name")?.Value).Where(v => !string.IsNullOrEmpty(v));
-                        var nm = string.Join(".", comps);
-                        var scope = node.Attribute("Scope")?.Value ?? "";
-                        var lit = node.Descendants("ConstantValue").FirstOrDefault()?.Value;
-                        sb.Append(lit ?? (scope.Contains("Global") ? $"\"{nm}\"" : (string.IsNullOrEmpty(nm) ? "" : "#" + nm)));
-                        break;
-                    case "Comment":
-                    case "LineComment":
-                        var ct = node.Descendants("Text").FirstOrDefault()?.Value;
-                        if (!string.IsNullOrEmpty(ct)) sb.Append("//" + ct);
-                        break;
-                }
-            }
-            return sb.ToString();
-        }
-
-        private static int ParseNum(XElement e, int def)
-            => int.TryParse(e.Attribute("Num")?.Value, out var n) ? n : def;
+        private static string RenderStructuredText(XElement unit) => SimaticMlText.RenderStructuredText(unit);
 
         private static string FirstMultilingual(XElement unit, string composition)
         {
